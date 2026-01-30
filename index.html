@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prism Labs — Dice Game</title>
+    <script src="https://cdn.ethers.io/v6/ethers.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1b2e 0%, #2d2a45 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 90%;
+            background: rgba(45, 42, 69, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .wallet-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .wallet-button {
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .wallet-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 212, 255, 0.3);
+        }
+
+        .wallet-button:disabled {
+            background: #444;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .wallet-info {
+            display: none;
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid #00d4ff;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .wallet-info.connected {
+            display: block;
+        }
+
+        .wallet-info p {
+            margin: 8px 0;
+            word-break: break-all;
+        }
+
+        .game-section {
+            display: none;
+        }
+
+        .game-section.active {
+            display: block;
+        }
+
+        .stats-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: #aaa;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1em;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+        }
+
+        .roll-button {
+            width: 100%;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #ff006e, #ff4d7d);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .roll-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(255, 0, 110, 0.3);
+        }
+
+        .roll-button:disabled {
+            background: #444;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-box {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .result-box.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-box.win {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .result-box.lose {
+            border-color: #ff006e;
+            background: rgba(255, 0, 110, 0.05);
+        }
+
+        .result-title {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .result-box.win .result-title {
+            color: #00ff88;
+        }
+
+        .result-box.lose .result-title {
+            color: #ff006e;
+        }
+
+        .result-details {
+            font-size: 0.95em;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+
+        .result-payout {
+            font-size: 1.3em;
+            color: #00d4ff;
+            margin-top: 10px;
+        }
+
+        .history {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85em;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item.win {
+            color: #00ff88;
+        }
+
+        .history-item.lose {
+            color: #ff006e;
+        }
+
+        .error-message {
+            background: rgba(255, 0, 110, 0.1);
+            border: 1px solid #ff006e;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            color: #ff9db5;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00d4ff;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎲 Prism Labs</h1>
+            <p class="subtitle">Decentralized Dice Game</p>
+        </header>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="wallet-section">
+            <button class="wallet-button" id="connectWallet">Connect Wallet</button>
+            <div class="wallet-info" id="walletInfo">
+                <p><strong>Address:</strong> <span id="walletAddress"></span></p>
+                <p><strong>Balance:</strong> <span id="walletBalance"></span> ETH</p>
+            </div>
+        </div>
+
+        <div class="game-section" id="gameSection">
+            <div class="stats-box">
+                <div class="stat">
+                    <div class="stat-label">Total Games</div>
+                    <div class="stat-value" id="totalGames">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Total Volume</div>
+                    <div class="stat-value" id="totalVolume">0 ETH</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Total Wins</div>
+                    <div class="stat-value" id="totalWins">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Win Rate</div>
+                    <div class="stat-value" id="winRate">0%</div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="stakeAmount">Stake Amount (ETH)</label>
+                <input type="number" id="stakeAmount" placeholder="0.01" min="0.001" step="0.001" value="0.01">
+            </div>
+
+            <button class="roll-button" id="rollButton">Roll Dice</button>
+
+            <div class="result-box" id="resultBox">
+                <div class="result-title" id="resultTitle">--</div>
+                <div class="result-details" id="resultDetails"></div>
+                <div class="result-payout" id="resultPayout"></div>
+            </div>
+
+            <div>
+                <label style="margin-bottom: 10px;">Recent Games</label>
+                <div class="history" id="history">
+                    <p style="color: #888; text-align: center;">No games yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+        const RPC_URL = 'http://10.0.0.48:8545';
+
+        const CONTRACT_ABI = [
+            'function roll() public payable returns (uint256)',
+            'function getStats() public view returns (uint256, uint256, uint256, uint256, uint256)',
+            'function getGame(uint256 gameId) public view returns (address, uint256, uint256, bool, bool)',
+            'function totalGames() public view returns (uint256)',
+            'function totalVolume() public view returns (uint256)',
+            'function totalWins() public view returns (uint256)'
+        ];
+
+        let provider, signer, contract, userAddress;
+        const gameHistory = [];
+
+        async function initProvider() {
+            provider = new ethers.JsonRpcProvider(RPC_URL);
+        }
+
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    showError('MetaMask not detected. Please install MetaMask or use another Web3 wallet.');
+                    return;
+                }
+
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                userAddress = accounts[0];
+
+                signer = await provider.getSigner(userAddress);
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                updateWalletInfo();
+                updateStats();
+                showGameSection();
+            } catch (error) {
+                showError('Failed to connect wallet: ' + error.message);
+            }
+        }
+
+        async function updateWalletInfo() {
+            document.getElementById('walletAddress').textContent = userAddress;
+            const balance = await provider.getBalance(userAddress);
+            document.getElementById('walletBalance').textContent = ethers.formatEther(balance);
+            document.getElementById('walletInfo').classList.add('connected');
+        }
+
+        async function updateStats() {
+            try {
+                const stats = await contract.getStats();
+                document.getElementById('totalGames').textContent = stats[0].toString();
+                document.getElementById('totalVolume').textContent = ethers.formatEther(stats[1]);
+                document.getElementById('totalWins').textContent = stats[2].toString();
+                document.getElementById('winRate').textContent = stats[3].toString() + '%';
+            } catch (error) {
+                console.error('Failed to fetch stats:', error);
+            }
+        }
+
+        async function rollDice() {
+            try {
+                const stakeAmount = document.getElementById('stakeAmount').value;
+                if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
+                    showError('Please enter a valid stake amount');
+                    return;
+                }
+
+                const stakeWei = ethers.parseEther(stakeAmount);
+                document.getElementById('rollButton').disabled = true;
+                document.getElementById('rollButton').innerHTML = '<span class="loading"></span> Rolling...';
+
+                const tx = await contract.roll({ value: stakeWei });
+                const receipt = await tx.wait();
+
+                const gameId = gameHistory.length;
+                const logs = receipt.logs;
+                
+                // Parse the GameResolved event
+                let won = false;
+                let payout = 0n;
+
+                for (const log of logs) {
+                    try {
+                        const parsed = contract.interface.parseLog(log);
+                        if (parsed && parsed.name === 'GameResolved') {
+                            won = parsed.args[2];
+                            payout = parsed.args[3];
+                        }
+                    } catch (e) {
+                        // Skip unparseable logs
+                    }
+                }
+
+                const gameData = {
+                    id: gameId,
+                    stake: stakeAmount,
+                    won: won,
+                    payout: ethers.formatEther(payout)
+                };
+
+                gameHistory.unshift(gameData);
+                displayResult(gameData);
+                updateStats();
+                updateHistory();
+
+            } catch (error) {
+                showError('Roll failed: ' + error.message);
+            } finally {
+                document.getElementById('rollButton').disabled = false;
+                document.getElementById('rollButton').innerHTML = 'Roll Dice';
+            }
+        }
+
+        function displayResult(gameData) {
+            const resultBox = document.getElementById('resultBox');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultDetails = document.getElementById('resultDetails');
+            const resultPayout = document.getElementById('resultPayout');
+
+            resultBox.classList.remove('win', 'lose');
+            if (gameData.won) {
+                resultBox.classList.add('win');
+                resultTitle.textContent = '🎉 YOU WON!';
+                resultDetails.textContent = `You staked ${gameData.stake} ETH`;
+                resultPayout.textContent = `Payout: ${gameData.payout} ETH`;
+            } else {
+                resultBox.classList.add('lose');
+                resultTitle.textContent = '😢 YOU LOST';
+                resultDetails.textContent = `Better luck next time!`;
+                resultPayout.textContent = `Stake: ${gameData.stake} ETH`;
+            }
+
+            resultBox.classList.add('show');
+        }
+
+        function updateHistory() {
+            const historyDiv = document.getElementById('history');
+            if (gameHistory.length === 0) {
+                historyDiv.innerHTML = '<p style="color: #888; text-align: center;">No games yet</p>';
+                return;
+            }
+
+            historyDiv.innerHTML = gameHistory.map((game, index) => `
+                <div class="history-item ${game.won ? 'win' : 'lose'}">
+                    <span>Game #${game.id} - ${game.stake} ETH</span>
+                    <span>${game.won ? '✓ Won ' + game.payout + ' ETH' : '✗ Lost'}</span>
+                </div>
+            `).join('');
+        }
+
+        function showGameSection() {
+            document.getElementById('gameSection').classList.add('active');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => errorDiv.classList.remove('show'), 5000);
+        }
+
+        // Event listeners
+        document.getElementById('connectWallet').addEventListener('click', connectWallet);
+        document.getElementById('rollButton').addEventListener('click', rollDice);
+
+        // Initialize
+        initProvider();
+    </script>
+</body>
+</html>
