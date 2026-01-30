@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prism Labs — Dice Game</title>
-    <script src="https://cdn.ethers.io/v6/ethers.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.10.0/ethers.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -49,6 +49,25 @@
 
         .subtitle {
             color: #888;
+            font-size: 0.9em;
+        }
+
+        .network-config {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.85em;
+        }
+
+        .network-config input {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: #fff;
+            margin-bottom: 10px;
             font-size: 0.9em;
         }
 
@@ -296,6 +315,21 @@
             display: block;
         }
 
+        .success-message {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            color: #00ff88;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
         .loading {
             display: inline-block;
             width: 16px;
@@ -318,7 +352,15 @@
             <p class="subtitle">Decentralized Dice Game</p>
         </header>
 
+        <div class="network-config">
+            <label>RPC Endpoint</label>
+            <input type="text" id="rpcUrl" placeholder="http://localhost:8545" value="http://localhost:8545">
+            <label>Contract Address</label>
+            <input type="text" id="contractAddress" placeholder="0x5FbDB2315678afecb367f032d93F642f64180aa3" value="0x5FbDB2315678afecb367f032d93F642f64180aa3">
+        </div>
+
         <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
 
         <div class="wallet-section">
             <button class="wallet-button" id="connectWallet">Connect Wallet</button>
@@ -371,42 +413,57 @@
     </div>
 
     <script>
-        const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-        const RPC_URL = 'http://10.0.0.48:8545';
-
         const CONTRACT_ABI = [
             'function roll() public payable returns (uint256)',
             'function getStats() public view returns (uint256, uint256, uint256, uint256, uint256)',
             'function getGame(uint256 gameId) public view returns (address, uint256, uint256, bool, bool)',
-            'function totalGames() public view returns (uint256)',
-            'function totalVolume() public view returns (uint256)',
-            'function totalWins() public view returns (uint256)'
+            'event GameResolved(uint256 indexed gameId, address indexed player, bool won, uint256 payout)'
         ];
 
         let provider, signer, contract, userAddress;
         const gameHistory = [];
+        const ethers = window.ethers;
+
+        if (!ethers) {
+            console.error('ethers.js failed to load');
+            document.body.innerHTML = '<div style="color: red; padding: 20px;">Error: ethers.js library failed to load. Please refresh the page.</div>';
+        }
+
+        async function getConfig() {
+            return {
+                rpc: document.getElementById('rpcUrl').value || 'http://localhost:8545',
+                contract: document.getElementById('contractAddress').value
+            };
+        }
 
         async function initProvider() {
-            provider = new ethers.JsonRpcProvider(RPC_URL);
+            const config = await getConfig();
+            provider = new ethers.JsonRpcProvider(config.rpc);
+            console.log('Provider initialized with RPC:', config.rpc);
         }
 
         async function connectWallet() {
             try {
+                showError('');
                 if (typeof window.ethereum === 'undefined') {
-                    showError('MetaMask not detected. Please install MetaMask or use another Web3 wallet.');
+                    showError('MetaMask not detected. Please install MetaMask.');
                     return;
                 }
 
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 userAddress = accounts[0];
+                console.log('Connected account:', userAddress);
 
                 signer = await provider.getSigner(userAddress);
-                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                const config = await getConfig();
+                contract = new ethers.Contract(config.contract, CONTRACT_ABI, signer);
 
-                updateWalletInfo();
-                updateStats();
-                showGameSection();
+                await updateWalletInfo();
+                await updateStats();
+                document.getElementById('gameSection').classList.add('active');
+                showSuccess('Wallet connected successfully!');
             } catch (error) {
+                console.error('Connection error:', error);
                 showError('Failed to connect wallet: ' + error.message);
             }
         }
@@ -427,11 +484,13 @@
                 document.getElementById('winRate').textContent = stats[3].toString() + '%';
             } catch (error) {
                 console.error('Failed to fetch stats:', error);
+                showError('Failed to load stats: ' + error.message);
             }
         }
 
         async function rollDice() {
             try {
+                showError('');
                 const stakeAmount = document.getElementById('stakeAmount').value;
                 if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
                     showError('Please enter a valid stake amount');
@@ -443,40 +502,39 @@
                 document.getElementById('rollButton').innerHTML = '<span class="loading"></span> Rolling...';
 
                 const tx = await contract.roll({ value: stakeWei });
+                console.log('Transaction sent:', tx.hash);
                 const receipt = await tx.wait();
+                console.log('Transaction confirmed');
 
-                const gameId = gameHistory.length;
-                const logs = receipt.logs;
-                
-                // Parse the GameResolved event
-                let won = false;
-                let payout = 0n;
+                // Parse events from receipt
+                let gameData = {
+                    stake: stakeAmount,
+                    won: false,
+                    payout: '0'
+                };
 
-                for (const log of logs) {
-                    try {
-                        const parsed = contract.interface.parseLog(log);
-                        if (parsed && parsed.name === 'GameResolved') {
-                            won = parsed.args[2];
-                            payout = parsed.args[3];
+                if (receipt && receipt.logs) {
+                    for (const log of receipt.logs) {
+                        try {
+                            const parsed = contract.interface.parseLog(log);
+                            if (parsed && parsed.name === 'GameResolved') {
+                                gameData.won = parsed.args[2];
+                                gameData.payout = ethers.formatEther(parsed.args[3]);
+                            }
+                        } catch (e) {
+                            // Skip unparseable logs
                         }
-                    } catch (e) {
-                        // Skip unparseable logs
                     }
                 }
 
-                const gameData = {
-                    id: gameId,
-                    stake: stakeAmount,
-                    won: won,
-                    payout: ethers.formatEther(payout)
-                };
-
                 gameHistory.unshift(gameData);
                 displayResult(gameData);
-                updateStats();
+                await updateStats();
                 updateHistory();
+                showSuccess('Game resolved!');
 
             } catch (error) {
+                console.error('Roll error:', error);
                 showError('Roll failed: ' + error.message);
             } finally {
                 document.getElementById('rollButton').disabled = false;
@@ -515,21 +573,27 @@
 
             historyDiv.innerHTML = gameHistory.map((game, index) => `
                 <div class="history-item ${game.won ? 'win' : 'lose'}">
-                    <span>Game #${game.id} - ${game.stake} ETH</span>
+                    <span>Game #${index} - ${game.stake} ETH</span>
                     <span>${game.won ? '✓ Won ' + game.payout + ' ETH' : '✗ Lost'}</span>
                 </div>
             `).join('');
         }
 
-        function showGameSection() {
-            document.getElementById('gameSection').classList.add('active');
-        }
-
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.classList.add('show');
-            setTimeout(() => errorDiv.classList.remove('show'), 5000);
+            if (message) {
+                errorDiv.textContent = message;
+                errorDiv.classList.add('show');
+            } else {
+                errorDiv.classList.remove('show');
+            }
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+            setTimeout(() => successDiv.classList.remove('show'), 3000);
         }
 
         // Event listeners
@@ -537,7 +601,11 @@
         document.getElementById('rollButton').addEventListener('click', rollDice);
 
         // Initialize
-        initProvider();
+        window.addEventListener('load', async () => {
+            console.log('Page loaded, initializing provider...');
+            await initProvider();
+            console.log('Provider ready');
+        });
     </script>
 </body>
 </html>
