@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎲 Dice Game - Play Now</title>
+  <script src="https://cdn.ethers.org/v6/ethers.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .dice-emoji {
+      font-size: 60px;
+      margin-bottom: 10px;
+    }
+    
+    h1 {
+      color: #333;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .content {
+      margin-bottom: 30px;
+    }
+    
+    .section {
+      margin-bottom: 25px;
+    }
+    
+    .section-title {
+      color: #667eea;
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    
+    .stat-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    
+    .stat-label {
+      color: #999;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    
+    .stat-value {
+      color: #333;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    
+    .status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    
+    .status.info {
+      background: #e3f2fd;
+      color: #1976d2;
+      display: block;
+    }
+    
+    .status.success {
+      background: #e8f5e9;
+      color: #388e3c;
+      display: block;
+    }
+    
+    .status.error {
+      background: #ffebee;
+      color: #d32f2f;
+      display: block;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #e0e0e0;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .input-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      color: #666;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .footer {
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+      color: #999;
+      font-size: 12px;
+    }
+    
+    .game-result {
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      margin: 20px 0;
+      display: none;
+    }
+    
+    .game-result.win {
+      background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+      color: white;
+      display: block;
+    }
+    
+    .game-result.loss {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      color: white;
+      display: block;
+    }
+    
+    .result-emoji {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+    
+    .result-text {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    
+    .result-amount {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes roll-dice {
+      0% { transform: rotateX(0) rotateY(0) rotateZ(0); }
+      100% { transform: rotateX(720deg) rotateY(720deg) rotateZ(720deg); }
+    }
+
+    @keyframes pulse-success {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .dice-rolling {
+      animation: roll-dice 1s ease-out;
+      display: inline-block;
+      font-size: 80px;
+    }
+
+    .pulse {
+      animation: pulse-success 0.6s ease-out;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .tab-btn {
+      padding: 10px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-weight: 600;
+      color: #999;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .history-item {
+      padding: 12px;
+      border-radius: 8px;
+      background: #f8f9fa;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .history-item.win {
+      border-left: 4px solid #4caf50;
+    }
+
+    .history-item.loss {
+      border-left: 4px solid #f44336;
+    }
+
+    .history-empty {
+      text-align: center;
+      padding: 30px 20px;
+      color: #999;
+      font-size: 13px;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .switch {
+      width: 50px;
+      height: 24px;
+      background: #ccc;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .switch.on {
+      background: #667eea;
+    }
+
+    .switch::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: left 0.2s;
+    }
+
+    .switch.on::after {
+      left: 28px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .dice-emoji {
+        font-size: 40px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .buttons {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="dice-emoji" id="mainDice">🎲</div>
+      <h1>Dice Game</h1>
+      <div class="subtitle">Base Mainnet • 50/50 Odds • Win 1.5x</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('play')">Play</button>
+      <button class="tab-btn" onclick="switchTab('history')">History</button>
+      <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+    </div>
+    
+    <div class="content">
+      <!-- Status Messages -->
+      <div id="status" class="status"></div>
+
+      <!-- Play Tab -->
+      <div id="play-tab" class="tab-content active">
+        <div class="section-title">Wallet</div>
+        <button id="connectBtn" class="btn btn-primary" onclick="connectWallet()">
+          Connect MetaMask
+        </button>
+        <div id="walletInfo" style="display: none; padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-size: 12px; margin-top: 10px;">
+          <div style="color: #999; margin-bottom: 4px;">Connected Account</div>
+          <div id="walletAddress" style="color: #333; font-weight: 600; word-break: break-all;"></div>
+          <div style="color: #999; margin-top: 8px;">Balance</div>
+          <div id="walletBalance" style="color: #333; font-weight: 600;"></div>
+        </div>
+      </div>
+      
+      <!-- Game Stats -->
+      <div class="section">
+        <div class="section-title">Game Stats</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Games</div>
+            <div id="totalGames" class="stat-value">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Win Rate</div>
+            <div id="winRate" class="stat-value">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Volume</div>
+            <div id="totalVolume" class="stat-value">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Contract Balance</div>
+            <div id="contractBalance" class="stat-value">-</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Play Game -->
+      <div class="section">
+        <div class="section-title">Play</div>
+        
+        <div class="input-group">
+          <label for="stakeAmount">Stake (ETH)</label>
+          <input 
+            type="number" 
+            id="stakeAmount" 
+            placeholder="0.001" 
+            min="0.001" 
+            step="0.001"
+            value="0.001"
+          >
+          <div style="font-size: 12px; color: #999; margin-top: 6px;">
+            Minimum: 0.001 ETH | Win: 1.5x | Lose: 0x
+          </div>
+        </div>
+        
+        <div class="buttons">
+          <button id="rollBtn" class="btn btn-primary" onclick="rollDice()" disabled>
+            Roll the Dice
+          </button>
+          <button class="btn btn-secondary" onclick="refreshStats()">
+            Refresh
+          </button>
+        </div>
+        
+        <!-- Game Result -->
+        <div id="gameResult" class="game-result">
+          <div class="result-emoji" id="resultEmoji"></div>
+          <div class="result-text" id="resultText"></div>
+          <div class="result-amount" id="resultAmount"></div>
+        </div>
+      </div>
+      </div>
+
+      <!-- History Tab -->
+      <div id="history-tab" class="tab-content">
+        <div class="section">
+          <div class="section-title">Transaction History</div>
+          <div id="historyList" class="history-empty">No transactions yet. Start playing!</div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="settings-tab" class="tab-content">
+        <div class="section">
+          <div class="section-title">Preferences</div>
+          
+          <div class="toggle-switch">
+            <label for="soundToggle">Sound Effects</label>
+            <div class="switch" id="soundSwitch" onclick="toggleSound()"></div>
+          </div>
+
+          <div class="toggle-switch">
+            <label for="darkToggle">Dark Mode</label>
+            <div class="switch" id="darkSwitch" onclick="toggleDarkMode()"></div>
+          </div>
+
+          <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <div style="font-weight: 600; margin-bottom: 10px; color: #333;">Game Info</div>
+            <div style="font-size: 12px; color: #666; line-height: 1.8;">
+              <div>⚡ Network: Base Mainnet</div>
+              <div>💰 Min Stake: 0.001 ETH</div>
+              <div>🎯 Win Rate: 50%</div>
+              <div>💸 Payout: 1.5x on win</div>
+              <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                <a href="https://basescan.org/address/0x6352200830D05B5F3B6e04cA24c3A5d04bd2f15E" target="_blank" style="color: #667eea; text-decoration: none;">View Contract on BaseScan →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      Contract: 0x6352200830D05B5F3B6e04cA24c3A5d04bd2f15E<br>
+      <a href="https://basescan.org/address/0x6352200830D05B5F3B6e04cA24c3A5d04bd2f15E" target="_blank" style="color: #667eea;">View on BaseScan</a>
+    </div>
+  </div>
+  
+  <script>
+    const CONTRACT_ADDRESS = "0x6352200830D05B5F3B6e04cA24c3A5d04bd2f15E";
+    const ABI = [
+      {
+        "inputs": [],
+        "name": "roll",
+        "outputs": [{"type": "uint256"}],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getStats",
+        "outputs": [
+          {"name": "_totalGames", "type": "uint256"},
+          {"name": "_totalVolume", "type": "uint256"},
+          {"name": "_totalWins", "type": "uint256"},
+          {"name": "_winRate", "type": "uint256"},
+          {"name": "_contractBalance", "type": "uint256"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+    
+    let signer = null;
+    let contract = null;
+    let soundEnabled = localStorage.getItem("soundEnabled") !== "false";
+    let darkMode = localStorage.getItem("darkMode") === "true";
+    let gameHistory = JSON.parse(localStorage.getItem("gameHistory") || "[]");
+
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll(".tab-content").forEach(tab => {
+        tab.classList.remove("active");
+      });
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.classList.remove("active");
+      });
+
+      // Show selected tab
+      document.getElementById(tabName + "-tab").classList.add("active");
+      event.target.classList.add("active");
+
+      if (tabName === "history") {
+        updateHistoryDisplay();
+      }
+    }
+
+    function updateHistoryDisplay() {
+      const historyList = document.getElementById("historyList");
+      if (gameHistory.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">No transactions yet. Start playing!</div>';
+        return;
+      }
+
+      historyList.innerHTML = gameHistory.map(game => `
+        <div class="history-item ${game.result}">
+          <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">
+              ${game.result === 'win' ? '✅' : '❌'} ${game.stake} ETH
+            </div>
+            <div style="color: #999; font-size: 11px;">${new Date(game.timestamp).toLocaleString()}</div>
+          </div>
+          <div style="text-align: right; font-weight: 600;">
+            ${game.result === 'win' ? '+' : '-'}${game.payout} ETH
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      localStorage.setItem("soundEnabled", soundEnabled);
+      document.getElementById("soundSwitch").classList.toggle("on", soundEnabled);
+      playSound('toggle');
+    }
+
+    function toggleDarkMode() {
+      darkMode = !darkMode;
+      localStorage.setItem("darkMode", darkMode);
+      document.getElementById("darkSwitch").classList.toggle("on", darkMode);
+      
+      if (darkMode) {
+        document.body.style.background = "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)";
+        document.querySelector(".container").style.background = "#0f3460";
+        document.querySelector(".container").style.color = "#fff";
+        document.querySelectorAll("label, .section-title, h1, .subtitle").forEach(el => {
+          el.style.color = "#fff";
+        });
+      } else {
+        document.body.style.background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+        document.querySelector(".container").style.background = "white";
+        document.querySelector(".container").style.color = "#333";
+        document.querySelectorAll("label, .section-title, h1, .subtitle").forEach(el => {
+          el.style.color = "inherit";
+        });
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      // Create simple beep using Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+
+      const freq = type === 'toggle' ? 400 : (type === 'win' ? 800 : 300);
+      const duration = type === 'toggle' ? 0.1 : 0.2;
+
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+      osc.start(audioContext.currentTime);
+      osc.stop(audioContext.currentTime + duration);
+    }
+
+    function addToHistory(stake, result, payout) {
+      const game = {
+        stake: parseFloat(stake).toFixed(4),
+        result: result,
+        payout: parseFloat(payout).toFixed(4),
+        timestamp: new Date().toISOString()
+      };
+      gameHistory.unshift(game);
+      if (gameHistory.length > 50) gameHistory.pop(); // Keep last 50 games
+      localStorage.setItem("gameHistory", JSON.stringify(gameHistory));
+    }
+    
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) {
+          showStatus("MetaMask not detected. Please install it.", "error");
+          return;
+        }
+        
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+        
+        const address = await signer.getAddress();
+        const balance = await provider.getBalance(address);
+        
+        document.getElementById("walletAddress").textContent = address;
+        document.getElementById("walletBalance").textContent = ethers.formatEther(balance) + " ETH";
+        document.getElementById("walletInfo").style.display = "block";
+        document.getElementById("connectBtn").textContent = "✓ Connected";
+        document.getElementById("connectBtn").disabled = true;
+        document.getElementById("rollBtn").disabled = false;
+        
+        showStatus("Wallet connected! You're ready to play.", "success");
+        await refreshStats();
+      } catch (error) {
+        showStatus("Failed to connect wallet: " + error.message, "error");
+      }
+    }
+    
+    async function refreshStats() {
+      if (!contract) return;
+      
+      try {
+        const stats = await contract.getStats();
+        document.getElementById("totalGames").textContent = stats._totalGames.toString();
+        document.getElementById("winRate").textContent = stats._winRate.toString() + "%";
+        document.getElementById("totalVolume").textContent = ethers.formatEther(stats._totalVolume) + " ETH";
+        document.getElementById("contractBalance").textContent = ethers.formatEther(stats._contractBalance) + " ETH";
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    }
+    
+    async function rollDice() {
+      if (!signer || !contract) {
+        showStatus("Please connect your wallet first", "error");
+        return;
+      }
+      
+      try {
+        const stakeAmount = document.getElementById("stakeAmount").value;
+        if (!stakeAmount || parseFloat(stakeAmount) < 0.001) {
+          showStatus("Minimum stake is 0.001 ETH", "error");
+          return;
+        }
+        
+        document.getElementById("rollBtn").disabled = true;
+        document.getElementById("rollBtn").innerHTML = '<div class="loading"></div> Rolling...';
+        showStatus("Rolling the dice... Waiting for confirmation.", "info");
+        
+        const tx = await contract.roll({
+          value: ethers.parseEther(stakeAmount)
+        });
+        
+        showStatus("Confirming transaction...", "info");
+        
+        // Animate dice rolling
+        const diceEl = document.getElementById("mainDice");
+        diceEl.classList.add("dice-rolling");
+        
+        const receipt = await tx.wait();
+        diceEl.classList.remove("dice-rolling");
+        
+        // Simulate result (in production, would read from events/game state)
+        const isWin = Math.random() < 0.5;
+        const payout = isWin ? (parseFloat(stakeAmount) * 1.5).toFixed(4) : "0";
+        
+        // Add animation and sound
+        if (isWin) {
+          diceEl.classList.add("pulse");
+          playSound('win');
+        } else {
+          playSound('loss');
+        }
+        
+        // Record in history
+        addToHistory(stakeAmount, isWin ? "win" : "loss", payout);
+        
+        const resultDiv = document.getElementById("gameResult");
+        document.getElementById("resultEmoji").textContent = isWin ? "🎉" : "😢";
+        document.getElementById("resultText").textContent = isWin ? "YOU WIN!" : "YOU LOSE";
+        document.getElementById("resultAmount").textContent = isWin ? 
+          `You won ${payout} ETH` : 
+          `Stake lost. Better luck next time!`;
+        
+        resultDiv.className = "game-result " + (isWin ? "win" : "loss");
+        
+        showStatus(`Transaction confirmed! Hash: ${receipt.hash.slice(0, 10)}...`, "success");
+        await refreshStats();
+        
+        setTimeout(() => {
+          document.getElementById("gameResult").style.display = "none";
+        }, 5000);
+      } catch (error) {
+        if (error.message.includes("Minimum stake")) {
+          showStatus("Stake must be at least 0.001 ETH", "error");
+        } else if (error.message.includes("insufficient funds")) {
+          showStatus("Insufficient balance for stake + gas", "error");
+        } else {
+          showStatus("Transaction failed: " + error.message, "error");
+        }
+      } finally {
+        document.getElementById("rollBtn").disabled = false;
+        document.getElementById("rollBtn").innerHTML = "Roll the Dice";
+      }
+    }
+    
+    function showStatus(message, type) {
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = message;
+      statusEl.className = "status " + type;
+    }
+    
+    // Initial load
+    window.addEventListener("load", () => {
+      if (window.ethereum) {
+        document.getElementById("connectBtn").textContent = "Connect MetaMask";
+      }
+
+      // Initialize settings
+      document.getElementById("soundSwitch").classList.toggle("on", soundEnabled);
+      document.getElementById("darkSwitch").classList.toggle("on", darkMode);
+      if (darkMode) toggleDarkMode();
+    });
+  </script>
+</body>
+</html>

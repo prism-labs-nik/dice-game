@@ -33,3 +33,4 @@ typechain/
 .netlify/
 .vercel/
 coverage/
+.vercel
