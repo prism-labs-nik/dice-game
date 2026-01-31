@@ -437,9 +437,7 @@
         }
 
         async function initProvider() {
-            const config = await getConfig();
-            provider = new ethers.JsonRpcProvider(config.rpc);
-            console.log('Provider initialized with RPC:', config.rpc);
+            console.log('Using MetaMask provider');
         }
 
         async function connectWallet() {
@@ -454,7 +452,9 @@
                 userAddress = accounts[0];
                 console.log('Connected account:', userAddress);
 
-                signer = await provider.getSigner(userAddress);
+                // Use MetaMask's provider instead of custom RPC
+                const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+                signer = await ethersProvider.getSigner();
                 const config = await getConfig();
                 contract = new ethers.Contract(config.contract, CONTRACT_ABI, signer);
 
@@ -470,13 +470,18 @@
 
         async function updateWalletInfo() {
             document.getElementById('walletAddress').textContent = userAddress;
-            const balance = await provider.getBalance(userAddress);
+            const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+            const balance = await ethersProvider.getBalance(userAddress);
             document.getElementById('walletBalance').textContent = ethers.formatEther(balance);
             document.getElementById('walletInfo').classList.add('connected');
         }
 
         async function updateStats() {
             try {
+                if (!contract) {
+                    console.log('Contract not initialized yet');
+                    return;
+                }
                 const stats = await contract.getStats();
                 document.getElementById('totalGames').textContent = stats[0].toString();
                 document.getElementById('totalVolume').textContent = ethers.formatEther(stats[1]);
