@@ -482,7 +482,10 @@
                     console.log('Contract not initialized yet');
                     return;
                 }
-                const stats = await contract.getStats();
+                // Use read-only provider for stats (doesn't need signer)
+                const readProvider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+                const readContract = new ethers.Contract(contract.target, CONTRACT_ABI, readProvider);
+                const stats = await readContract.getStats();
                 document.getElementById('totalGames').textContent = stats[0].toString();
                 document.getElementById('totalVolume').textContent = ethers.formatEther(stats[1]);
                 document.getElementById('totalWins').textContent = stats[2].toString();
