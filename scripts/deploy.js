@@ -3,7 +3,10 @@ const hre = require("hardhat");
 async function main() {
   console.log("Deploying DiceGame contract...");
 
-  const DiceGame = await hre.ethers.getContractFactory("DiceGame");
+  const [signer] = await hre.ethers.getSigners();
+  console.log(`Deploying from: ${signer.address}`);
+
+  const DiceGame = await hre.ethers.getContractFactory("DiceGame", signer);
   const diceGame = await DiceGame.deploy();
 
   await diceGame.waitForDeployment();

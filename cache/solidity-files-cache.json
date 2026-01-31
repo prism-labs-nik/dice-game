@@ -36,6 +36,42 @@
       "artifacts": [
         "DiceGame"
       ]
+    },
+    "/home/eli/clawd/dapp-builder/dice-game-work/contracts/DiceGame.sol": {
+      "lastModificationDate": 1769849018701,
+      "contentHash": "cfc8ab3a14b644fea9cec2354da8b22c",
+      "sourceName": "contracts/DiceGame.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "DiceGame"
+      ]
     }
   }
 }
